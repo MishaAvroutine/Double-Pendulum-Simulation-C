@@ -16,7 +16,7 @@
 #define L2 200.0
 #define DT 0.01
 
-#define G 100
+#define G 1000.0
 
 typedef struct PendulumComponents
 {
@@ -81,17 +81,43 @@ void InitState(PendulumComponents* components)
 
 void solvePendulum(PendulumComponents* components, float dt)
 {
-    components->alpha1_dd = (-G / components->l1) * sinf(components->alpha1);
-
+    float sin_a1 = sinf(components->alpha1);
+    float cos_a1 = cosf(components->alpha1);
+    float sin_a2 = sinf(components->alpha2);
+    float cos_a2 = cosf(components->alpha2);
+    float diff = components->alpha1 - components->alpha2;
+    float sin_diff = sinf(diff);
+    float cos_diff = cosf(diff);
+    float sin_2diff = sinf(2 * diff);
+    float cos_2diff = cosf(2 * diff);
+    
+    float m1 = components->m1;
+    float m2 = components->m2;
+    float l1 = components->l1;
+    float l2 = components->l2;
+    float a1d_sq = components->alpha1_d * components->alpha1_d;
+    float a2d_sq = components->alpha2_d * components->alpha2_d;
+    
+   
+    float denom = 2 * m1 + m2 - m2 * cos_2diff;
+    
+    // θ1'' = −g (2 m1 + m2) sin θ1 − m2 g sin(θ1 − 2 θ2) − 2 sin(θ1 − θ2) m2 (θ2'2 L2 + θ1'2 L1 cos(θ1 − θ2))
+    //        / L1 (2 m1 + m2 − m2 cos(2 θ1 − 2 θ2))
+    float numerator1 = -G * (2 * m1 + m2) * sin_a1 
+                       - m2 * G * sinf(components->alpha1 - 2 * components->alpha2)
+                       - 2 * sin_diff * m2 * (a2d_sq * l2 + a1d_sq * l1 * cos_diff);
+    components->alpha1_dd = numerator1 / (l1 * denom);
+    
+    // θ2'' = 2 sin(θ1 − θ2) (θ1'2 L1 (m1 + m2) + g(m1 + m2) cos θ1 + θ2'2 L2 m2 cos(θ1 − θ2))
+    //        / L2 (2 m1 + m2 − m2 cos(2 θ1 − 2 θ2))
+    float numerator2 = 2 * sin_diff * (a1d_sq * l1 * (m1 + m2) + G * (m1 + m2) * cos_a1 + a2d_sq * l2 * m2 * cos_diff);
+    components->alpha2_dd = numerator2 / (l2 * denom);
+    
+    
     components->alpha1_d += components->alpha1_dd * dt;
-
-    components->alpha1 += components->alpha1_d * dt;
-
-
-    components->alpha2_dd = (-G / components->l2) * sinf(components->alpha2);
-
     components->alpha2_d += components->alpha2_dd * dt;
-
+    
+    components->alpha1 += components->alpha1_d * dt;
     components->alpha2 += components->alpha2_d * dt;
 }
 
