@@ -36,6 +36,14 @@ typedef struct PendulumComponents
     float alpha2_dd;
 } PendulumComponents;
 
+typedef struct MoveableBox
+{
+    Vector2 position;
+    float width;
+    float height;
+    bool isDragging;
+} MoveableBox;
+
 
 Vector2 get_end(Vector2* start,float alpha,float l)
 {
@@ -56,11 +64,42 @@ void drawPendulum(Vector2* startPos,float alpha,float l)
 }
 
 
-void drawDoublePendulum(Vector2* startPos,PendulumComponents* components)
+void drawDoublePendulum(Vector2* startPos,PendulumComponents* components,MoveableBox* box)
 {
-    Vector2 end_first = get_end(startPos,components->alpha1,components->l1);
+    Vector2 updatedStartPos = {startPos->x + box->width / 2, startPos->y + box->height / 2};
+    Vector2 end_first = get_end(&updatedStartPos,components->alpha1,components->l1);
     drawPendulum(&end_first,components->alpha2,components->l2);
-    drawPendulum(startPos,components->alpha1,components->l1);
+    drawPendulum(&updatedStartPos,components->alpha1,components->l1);
+}
+
+void drawMoveableBox(MoveableBox* box)
+{
+    DrawRectangleV(box->position, (Vector2){box->width, box->height}, BLUE);
+    DrawRectangleLinesEx((Rectangle){box->position.x, box->position.y, box->width, box->height}, 2, WHITE);
+}
+
+void updateMoveableBox(MoveableBox* box)
+{
+    Rectangle boxRect = {box->position.x, box->position.y, box->width, box->height};
+    Vector2 mousePos = GetMousePosition();
+    
+    // Check if mouse is over the box
+    if (CheckCollisionPointRec(mousePos, boxRect) && IsMouseButtonPressed(MOUSE_BUTTON_LEFT))
+    {
+        box->isDragging = true;
+    }
+    
+    // If dragging, update position
+    if (box->isDragging && IsMouseButtonDown(MOUSE_BUTTON_LEFT))
+    {
+        box->position = mousePos;
+    }
+    
+    // Stop dragging when mouse is released
+    if (IsMouseButtonReleased(MOUSE_BUTTON_LEFT))
+    {
+        box->isDragging = false;
+    }
 }
 
 void InitState(PendulumComponents* components)
@@ -132,18 +171,23 @@ int main()
     PendulumComponents components= {0};
     InitState(&components);
 
-    // start pos.
-    Vector2 startPos = {WIDTH / 2, 0};
+    MoveableBox box = {0};
+    box.position = (Vector2){WIDTH / 2, 0};
+    box.width = 30;
+    box.height = 30;
+    box.isDragging = false;
 
     SetTargetFPS(120);
     // main loop
     while(!WindowShouldClose())
     {
+        updateMoveableBox(&box);
         solvePendulum(&components,DT);
         BeginDrawing();
         ClearBackground(BLACK);
         DrawFPS(20,20);
-        drawDoublePendulum(&startPos,&components);
+        drawDoublePendulum(&box.position,&components,&box);
+        drawMoveableBox(&box);
         EndDrawing();
     }
     return 0;
