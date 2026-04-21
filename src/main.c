@@ -1,11 +1,14 @@
+#define RAYGUI_IMPLEMENTATION
+#include"../include/raygui.h"
 #include<stdio.h>
 #include"../include/raylib.h"
 #include"../include/raymath.h"
+#include"../include/style_jungle.h"
 #include<math.h>
 
 
-#define HEIGHT 600
-#define WIDTH 800
+#define HEIGHT 800
+#define WIDTH 1280
 
 
 #define THICKNESS_OF_LINE 10
@@ -15,8 +18,30 @@
 #define L1 250.0
 #define L2 200.0
 #define DT 0.01
+#define DAMPEN 0.999
 
-#define G 1000.0
+
+#define MIN_L 1.0
+#define MAX_L 400.0
+
+
+#define MIN_G 1.0
+#define MAX_G 1000.0
+
+#define MIN_MASS 1.0
+#define MAX_MASS 100.0
+
+#define SLIDER_BAR_X_MARGIN 50
+#define SLIDER_BAR_WIDTH 200
+#define SLIDER_BAR_HEIGHT 25
+
+
+#define FONT_SIZE 20
+
+#define MARGIN 25
+
+static float G = 100.0;
+static bool dampen = false;
 
 typedef struct PendulumComponents
 {
@@ -158,6 +183,33 @@ void solvePendulum(PendulumComponents* components, float dt)
     
     components->alpha1 += components->alpha1_d * dt;
     components->alpha2 += components->alpha2_d * dt;
+    if(dampen)
+        components->alpha1 *= DAMPEN;
+        components->alpha2 *= DAMPEN;
+}
+
+
+void DrawUI(PendulumComponents* components)
+{
+    DrawText("G: ",0,HEIGHT - MARGIN,FONT_SIZE,BLUE);
+    GuiSliderBar((Rectangle){SLIDER_BAR_X_MARGIN,HEIGHT - MARGIN,SLIDER_BAR_WIDTH,SLIDER_BAR_HEIGHT},"0.0","1000.0",&G,MIN_G,MAX_G);
+
+    DrawText("L1: ",0,HEIGHT- MARGIN * 5,FONT_SIZE,BLUE);
+    GuiSliderBar((Rectangle){SLIDER_BAR_X_MARGIN + 10,HEIGHT - MARGIN*5,SLIDER_BAR_WIDTH,SLIDER_BAR_HEIGHT},"0.0","400.0",&components->l1,MIN_L,MAX_L);
+
+    DrawText("L2: ",0,HEIGHT- MARGIN * 4,FONT_SIZE,BLUE);
+    GuiSliderBar((Rectangle){SLIDER_BAR_X_MARGIN + 10,HEIGHT - MARGIN*4,SLIDER_BAR_WIDTH,SLIDER_BAR_HEIGHT},"0.0","400.0",&components->l2,MIN_L,MAX_L);
+
+    DrawText("M1: ",0,HEIGHT- MARGIN * 3,FONT_SIZE,BLUE);
+    GuiSliderBar((Rectangle){SLIDER_BAR_X_MARGIN + 10,HEIGHT - MARGIN*3,SLIDER_BAR_WIDTH,SLIDER_BAR_HEIGHT},"0.0","100.0",&components->m2,MIN_MASS,MAX_MASS);
+
+    DrawText("M2: ",0,HEIGHT- MARGIN * 2,FONT_SIZE,BLUE);
+    GuiSliderBar((Rectangle){SLIDER_BAR_X_MARGIN + 10,HEIGHT - MARGIN*2,SLIDER_BAR_WIDTH,SLIDER_BAR_HEIGHT},"0.0","100.0",&components->m1,MIN_MASS,MAX_MASS);
+
+    DrawText("Damp: ",0,HEIGHT - MARGIN * 6,FONT_SIZE,BLUE);
+    GuiCheckBox((Rectangle){SLIDER_BAR_X_MARGIN + 10,HEIGHT - MARGIN*6,30,25},dampen ? "True" : "False",&dampen);
+
+
 }
 
 
@@ -166,7 +218,7 @@ int main()
 {
     // init window
     InitWindow(WIDTH,HEIGHT,"Double Pendulum");
-
+    GuiLoadStyleJungle();
     // init components
     PendulumComponents components= {0};
     InitState(&components);
@@ -183,8 +235,15 @@ int main()
     {
         updateMoveableBox(&box);
         solvePendulum(&components,DT);
+
+        if(IsKeyPressed(KEY_R))
+        {
+            InitState(&components);
+        }
+
         BeginDrawing();
         ClearBackground(BLACK);
+        DrawUI(&components);
         DrawFPS(20,20);
         drawDoublePendulum(&box.position,&components,&box);
         drawMoveableBox(&box);
